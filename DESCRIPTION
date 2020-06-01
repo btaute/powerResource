@@ -1,0 +1,26 @@
+Package: powerResource
+Type: Package
+Title: Tools To Analyze And Extrapolate Solar Resource Data
+Version: 0.0.1
+Author: Brock Taute
+Maintainer: Brock Taute <tautebro12@gmail.com>
+Description: Imports and tidies Groundwork measured data, CPR satellite data, and Vaisala satellite data.
+    Correlates the satellite data to the measured data and scales an input tmy to reflect the new longterm resource adjustment.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.0
+Suggests: 
+    testthat
+Imports: 
+    dplyr,
+    magrittr,
+    lubridate,
+    ggplot2,
+    readr,
+    purrr,
+    stringr,
+    methods,
+    tidyr,
+    tibble,
+    tidyselect

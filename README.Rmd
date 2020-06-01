@@ -1,0 +1,277 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  message=FALSE,
+  warning=FALSE
+)
+knitr::opts_knit$set(
+  root.dir = 'C:/Users/btaute/Documents/example_respository'
+)
+```
+
+# powerResource
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+powerResource is a package designed to improve solar resource data analysis.  Most engineers use a compilation of 
+spreadsheet templates to organize all of their onsite solar resource measurements, compare this data to satellite 
+models, and predict future solar resource statistics.  To handle the amount of data involved in these analyses and to
+perform all of the complex calculations, these spreadsheets end up being very clunky and slow.  These templates also
+have ample room for human error.  Utilizing a scripting language (R), drastically speeds up the analysis, ensures
+reproducibility, and reduces errors.  This package unlocks a workflow that will be accessible to engineers with little
+programming experience.
+
+## Installation
+
+The easiest way to install this package from github is to use the 'devtools' package.  To make sure you have that, 
+you can run the code:
+
+``` {r eval=FALSE}
+install.packages('devtools')
+```
+
+If you have that package installed, then you can install powerResource with the following code:
+
+``` {r eval=FALSE}
+devtools::install_github('btaute/powerResource')
+```
+
+This package takes advantage of the excellent group of packages made available by RStudio known as the TidyVerse.  I
+strongly recommend you install and use RStudio to serve as your development environment and you also install the 
+tidyverse packages with 
+
+```{r eval=FALSE} 
+install.packages('tidyverse')
+```
+
+## Example Analysis
+
+Once you have the package installed, the following examples will show how to utilize the package to evaluate onsite
+data and perform an "MCP".  The term MCP describes the method of Measuring onsite data, Correlating it to long-term 
+satellite models, and then Predicting future solar resource for that location.
+
+### Set Up Working Directory
+
+To start your data analysis, you will want to have all of your datasets accessible in one location.  You'll also want
+to save the script that you use to run your analysis in this location so that future you or colleagues can go back and
+reproduce your work.  This collection of files and folders into one directory is called a repository.  This example
+uses a repository organized like the following:
+  example_repository/
+      example_script.R
+      data/
+          groundwork/
+          cpr/
+          vaisala/
+          tmy/
+          
+The folders "groundwork", "cpr", "vaisala", and "tmy" within the "data" folder each contain the CSVs that have the data we 
+plan to use in the analysis.  Groundwork is the company that supplies the onsite data for this analysis, Clean Power
+Research has satellite model datasets that will be used as one source of longterm datasets, and Vaisala is another
+company that provides satellite model datasets to be used as a source of our longterm datasets.
+
+You will want to make this repository your "working directory" so that you can easily access all the data with your 
+code.  To do this, put the following code at the top of your example_script.R file, but be sure to put the correct
+path to the repository on your computer.  I'm guessing your username isn't "btaute"... Note that you need to 
+use "/" instead of "\" if you have folders to navigate through folders.
+
+```{r eval=FALSE}
+
+setwd('C:/Users/btaute/Documents/example_respository')
+
+```
+
+### Import Data
+
+Now you want to load in all the data you have in your repository.  The script below shows a couple different ways to
+accomplish that.  Note that it starts out by loading in the powerResource package so we can have access to its
+functions.  These examples also make use of the tidyverse packages.
+
+```{r import_data}
+
+## Load the powerResource package
+library(powerResource)
+library(tidyverse)
+
+## Save all of the files in the groundwork folder that end in CSV in a list
+groundwork_files <- paste0('data/groundwork/', dir(path = "data/groundwork/", pattern = "*.csv"))
+
+## Read in the groundwork files, clean up all of the variables, and save them as a dataframe named sms_flagged
+sms_flagged <- read_groundwork(groundwork_files)
+
+## Save a list of the files in the cpr folder
+cpr_files <- c('data/cpr/cpr_timeseries_v33.csv', 'data/cpr/cpr_timeseries_v34.csv')
+
+## Read in the cpr files, clean up all of the variable names, and save them in a named list
+cpr_list <- read_cpr(cpr_files)
+
+## Read in a single vaisala time series file, clean up its variable names, and save it in a named list
+vaisala_list <- read_vaisala('data/vaisala/vaisala_timeseries.csv')
+
+```
+
+Let's check that all of that data imported correctly.
+
+```{r groundwork_check}
+
+head(sms_flagged)
+summary(sms_flagged)
+
+```
+
+```{r satellite_check}
+
+head(cpr_list)
+head(vaisala_list)
+
+```
+
+You can also break up the process of importing the onsite data by using the following workflow:
+
+```{r groundwork_import_explicit}
+
+## Import the files
+groundwork_df <- import_groundwork_files(groundwork_files)
+
+## Tidy the Dataframe
+tidy_sms <- tidy_groundwork(groundwork_df)
+
+## Flag the Dataframe
+sms_flagged <- flag_sms(tidy_sms)
+
+```
+
+### Evaluate Onsite Measured Data
+
+It's important to note the flags that Groundwork attaches to each measurement of the onsite data.  An important metric of the quality
+of the data is the percentage of data that is flagged.  With our data in a tidy format, it's easy to visualize this.  For a complete
+description of the flag definitions, please reference Groundwork's monthly reports.
+
+```{r onsite_data_recovery}
+
+## Get the flag count dataframe
+flag_count <- count_flags(sms_flagged)
+
+## Plot the monthly data recovery results
+plot_flag_count_bar_chart(flag_count)
+
+```
+
+### Create a Megaframe!
+
+Once you have evaluated the onsite data, it's time to correlate it with the longterm satellite model datasets.  To do this,
+we need to compile all of the datasets into one large dataframe, what I call a Megaframe!  This can be done with the following
+code:
+
+```{r compile_megaframe}
+
+## Prepare for Megaframe
+sms <- prepare_sms_flagged_for_megaframe(sms_flagged, flagged_data_is_filtered = TRUE)
+
+## Create the Megaframe!
+megaframe <- compile_megaframe(sms, cpr_list, vaisala_list)
+
+
+```
+
+The code below breaks down the steps of prepare_sms_flagged_for_megaframe().
+
+```{r prepare_sms_flagged}
+
+sms_filtered <- filter_sms(sms_flagged)
+sms_averaged <- average_ghi_sensors(sms_filtered)
+sms_hourly <- average_data_to_hourly(sms_averaged)
+sms <- format_sms_vars_for_megaframe(sms_hourly)
+
+```
+
+### Run an MCP Method 1:
+
+There are two ways to calculate the results of the MCP.  The first is done by creating an MCP object, which will store all of the inputs
+and results of the MCP in one location.  This is the simplest method.
+
+```{r mcp_object_example}
+
+## Create the MCP object by giving it the megaframe parameter
+my_mcp <- MCP(megaframe)
+
+## Run the mcp
+my_mcp$run()
+
+## Get the results of the mcp
+my_mcp$get_results()
+
+```
+
+You can also view the MCP results in a more convenient format, broken out by the timestep used in the MCP (hourly or daily).
+
+```{r eval=FALSE}
+
+my_mcp$get_daily_results_table()
+
+```
+
+```{r mcp_ltra_tables, echo=FALSE}
+
+my_mcp$get_daily_results_table() %>% knitr::kable()
+
+```
+
+```{r eval=FALSE}
+
+my_mcp$get_hourly_results_table()
+
+```
+
+```{r get_hourly_results, echo=FALSE}
+
+my_mcp$get_hourly_results_table() %>% knitr::kable()
+
+```
+
+### Run an MCP Method 2:
+
+The second method of running an MCP allows you to specify a particular timestep that you want to run (instead of running both daily and hourly automatically).
+
+```{r mcp_function_example}
+
+## Filter Megaframe so we only have ghi data
+megaframe_ghi_only <- select(megaframe, -temp, -ws)
+
+## Run an MCP for daily timestep
+mcp_example_2 <- run_mcp_for_single_timestep(megaframe_ghi_only, daily = TRUE)
+
+## Get MCP Results
+get_mcp_results(mcp_example_2, megaframe_ghi_only)
+
+```
+
+### Evaluate SMS Campaign:
+
+The last function we'll demonstrate helps you evaluate the benefits of additional onsite data.  It runs an MCP after each month of onsite
+data so that you can benchmark how the longterm predictions change with each additional month of data.  Typically, after about 16 months
+of data, you will see that collecting more onsite data has a very small impact on the longterm prediction.  At this point, it may make sense
+to decommission your onsite measurements.  This plot also illustrates the danger in running an MCP too soon, as the first couple months of 
+onsite data have drastically different results.
+
+```{r campaign_example}
+
+## Run Campaign
+campaign_results <- run_sms_campaign(megaframe)
+
+## Plot Longterm GHI Adjustment after each month of the campaign
+plot_campaign_ghi_longterm_adjustments(campaign_results)
+
+## Plot Campaign uncertainty after each month of the campaign
+plot_campaign_rom_uncertainty(campaign_results)
+
+```
