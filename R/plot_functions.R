@@ -16,6 +16,16 @@ plot_time_series_range <- function(df, y, color, date_start, date_end, ylab, col
   return(p)
 }
 
+plot_sensor_v_sensor_scatter <- function(df, sensor_x, sensor_y, sensor_flag, title) {
+  p <- df %>%
+    ggplot(aes(x = get(sensor_x), y = get(sensor_y), color = as.factor(get(sensor_flag)))) +
+    geom_point(alpha = .4) +
+    labs(x = sensor_x, y = sensor_y, color = sensor_flag, title = title) +
+    plot_theme()
+
+  return(p)
+}
+
 #' Count Flags
 #'
 #' Count the number of flags per month for the onsite measurements

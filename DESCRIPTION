@@ -23,4 +23,9 @@ Imports:
     methods,
     tidyr,
     tibble,
-    tidyselect
+    tidyselect,
+    shiny,
+    shinydashboard,
+    gridExtra,
+    ggpmisc,
+    shinyjs

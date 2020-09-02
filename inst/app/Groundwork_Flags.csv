@@ -1,0 +1,10 @@
+﻿Flag,Kt Test,Regression Test,Boxplot Test
+1,Pass,Pass,Pass
+10,Fail,Pass,Pass
+12,Pass,Fail,Pass
+13,Pass,Pass,Fail
+21,Fail,Fail,Pass
+22,Fail,Pass,Fail
+24,Pass,Fail,Fail
+33,Fail,Fail,Fail
+99,Missing,Missing,Missing

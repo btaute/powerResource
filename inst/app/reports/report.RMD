@@ -1,0 +1,84 @@
+---
+output: html_document
+params:
+  site_name: ''
+  sms_flagged: list()
+  mcp: list()
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+
+# `r params$site_name` Solar Resource Assessment
+## `r Sys.Date()`
+
+### Measured Data
+
+```{r count_flags}
+
+count_flags(params$sms_flagged) %>%
+  plot_flag_count_bar_chart()
+
+```
+
+
+### MCP Results
+
+```{r ltra_tables}
+
+params$mcp$daily_results_table %>%
+  knitr::kable()
+
+```
+
+
+### Concurrent Measurements
+```{r concurrent}
+
+params$mcp$megaframe %>%
+  filter(datetime >= min(filter(params$mcp$megaframe, model == 'sms')$datetime),
+         datetime <= max(filter(params$mcp$megaframe, model == 'sms')$datetime),
+         ghi > 0) %>%
+  plot_monthly_ghi(title = '') +
+  facet_wrap(~ year, ncol = 1) +
+  theme(legend.position="bottom")
+
+```
+
+
+### Long Term Annual Trends
+```{r annualplot}
+
+params$mcp$megaframe %>%
+  select_longterm_models() %>%
+  summarise_annual_total_ghi() %>%
+  add_normalized_ghi() %>%
+  plot_annual_model_values('ghi', 'Annualized Total GHI')
+
+```
+
+
+### Model Performance
+```{r modelplot}
+
+timestep <- 'daily'
+value <- 'fitted.values'
+    
+grab_model_list(params$mcp$model_fits, timestep, 'ghi', value) %>%
+  plot_model_comparison(value, title = paste(timestep, 'ghi', value))
+
+grab_model_list(params$mcp$model_fits, timestep, 'temp', value) %>%
+  plot_model_comparison(value, title = paste(timestep, 'temp', value))
+
+```
+
+### SMS Campaign Impact
+```{r campaignplots}
+
+campaign_df <- compile_monthly_ghi_results_of_campaign(params$mcp$megaframe)
+plot_campaign_ghi_longterm_adjustments(campaign_df)
+plot_campaign_ghi_uncertainty(campaign_df)
+
+```
